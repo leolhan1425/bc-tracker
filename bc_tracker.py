@@ -993,12 +993,19 @@ def export_all_data(conn: sqlite3.Connection) -> dict:
 
     stats = query_db_stats(conn)
 
+    validation = {
+        "sentiment": get_validation_examples(conn, "sentiment", limit=3),
+        "mentions": get_validation_examples(conn, "mentions", limit=3),
+        "effects": get_validation_examples(conn, "effects", limit=3),
+    }
+
     return {
         "posts": posts,
         "mentions": mentions,
         "side_effects": side_effects,
         "comments": comments,
         "stats": stats,
+        "validation": validation,
     }
 
 

@@ -32,6 +32,7 @@ def generate_html(data: dict) -> str:
     effects_json = json.dumps(data["side_effects"], separators=(",", ":"))
     comments_json = json.dumps(data["comments"], separators=(",", ":"))
     stats_json = json.dumps(stats, separators=(",", ":"))
+    validation_json = json.dumps(data["validation"], separators=(",", ":"))
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -138,6 +139,48 @@ def generate_html(data: dict) -> str:
   .export-btn {{ background: none; border: 1px solid var(--border); color: var(--muted);
     padding: .4rem .8rem; border-radius: 8px; font-size: .8rem; }}
   .export-btn:hover {{ border-color: var(--green); color: var(--green); }}
+
+  .card-header {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }}
+  .card-header h2 {{ margin-bottom: 0; }}
+  .methods-btn {{ background: none; border: 1px solid var(--border); color: var(--muted);
+    padding: 2px 8px; border-radius: 6px; font-size: .65rem; cursor: pointer;
+    text-transform: uppercase; letter-spacing: .04em; transition: all .2s; }}
+  .methods-btn:hover {{ border-color: var(--accent); color: var(--accent); }}
+  .methods-btn.active {{ border-color: var(--accent); color: var(--accent); background: rgba(124,110,240,0.1); }}
+  .methods-box {{ display: none; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: .8rem 1rem; margin-bottom: 1rem; font-size: .78rem;
+    line-height: 1.6; color: var(--muted); }}
+  .methods-box.visible {{ display: block; }}
+  .methods-box strong {{ color: var(--text); }}
+  .methods-box ul {{ margin: .3rem 0 .3rem 1.2rem; }}
+  .methods-box li {{ margin-bottom: .15rem; }}
+  .methods-box code {{ background: var(--surface); padding: 1px 4px; border-radius: 3px; font-size: .72rem; }}
+
+  .validate-btn {{ background: none; border: 1px solid var(--border); color: var(--muted);
+    padding: 2px 8px; border-radius: 6px; font-size: .65rem; cursor: pointer;
+    text-transform: uppercase; letter-spacing: .04em; transition: all .2s; margin-left: 4px; }}
+  .validate-btn:hover {{ border-color: var(--cyan); color: var(--cyan); }}
+  .validate-btn.active {{ border-color: var(--cyan); color: var(--cyan); background: rgba(64,208,208,0.1); }}
+  .validate-box {{ display: none; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: .8rem 1rem; margin-bottom: 1rem; font-size: .78rem; line-height: 1.6; }}
+  .validate-box.visible {{ display: block; }}
+  .val-example {{ background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    padding: .6rem .8rem; margin-bottom: .6rem; }}
+  .val-example:last-child {{ margin-bottom: 0; }}
+  .val-title {{ font-weight: 600; font-size: .8rem; margin-bottom: .3rem; color: var(--text); }}
+  .val-text {{ font-size: .75rem; color: var(--muted); margin-bottom: .4rem;
+    white-space: pre-wrap; word-break: break-word; line-height: 1.5; }}
+  .val-text .hl-pos {{ background: rgba(74,222,128,0.2); color: var(--green); border-radius: 2px; padding: 0 2px; }}
+  .val-text .hl-neg {{ background: rgba(240,96,96,0.2); color: var(--red); border-radius: 2px; padding: 0 2px; }}
+  .val-text .hl-negator {{ background: rgba(240,192,64,0.15); color: var(--yellow); border-radius: 2px; padding: 0 2px; }}
+  .val-text .hl-intensifier {{ background: rgba(124,110,240,0.15); color: var(--accent); border-radius: 2px; padding: 0 2px; }}
+  .val-text .hl-mention {{ background: rgba(124,110,240,0.25); color: var(--accent); border-radius: 2px; padding: 0 2px; font-weight: 600; }}
+  .val-text .hl-effect {{ background: rgba(240,192,64,0.25); color: var(--yellow); border-radius: 2px; padding: 0 2px; font-weight: 600; }}
+  .val-steps {{ font-size: .7rem; color: var(--muted); margin-top: .3rem; }}
+  .val-steps table {{ font-size: .7rem; }}
+  .val-steps td {{ padding: .15rem .4rem; border-bottom: 1px solid var(--border); }}
+  .val-summary {{ font-size: .75rem; font-weight: 600; margin-top: .4rem; padding: .3rem .5rem;
+    background: var(--bg); border-radius: 4px; }}
 </style>
 </head>
 <body>
@@ -171,31 +214,70 @@ def generate_html(data: dict) -> str:
   <div class="stats" id="statsRow"></div>
   <div class="grid">
     <div class="card">
-      <h2>Mentions by Type</h2>
+      <div class="card-header"><h2>Mentions by Type</h2><div><button class="methods-btn" onclick="toggleMethods('m-mentions')">Methods</button><button class="validate-btn" onclick="toggleValidate('v-mentions','mentions')">Validate</button></div></div>
+      <div class="methods-box" id="m-mentions">
+        <strong>How mentions are counted:</strong> Posts are scraped from <strong>8 subreddits</strong>: r/birthcontrol (primary, 200 posts), r/TwoXChromosomes, r/abortion, r/prochoice, r/prolife, r/sex, r/AskDocs, r/WomensHealth (100 each). Both /new and /hot sort orders are scraped per sub for broader coverage. Each post title, body text, and comment is scanned against <strong>26 regex patterns</strong> &mdash; one per contraceptive type, including common misspellings and slang (e.g., "merina" &rarr; Mirena, "paraguard" &rarr; Paragard, "copper T" &rarr; Paragard, "bc shot" &rarr; Depo-Provera). The "IUD (general)" category uses a negative lookahead to avoid double-counting when a specific brand is also named. <strong>Cross-posted content</strong> is detected and deduplicated. Counts reflect the number of <strong>unique posts + comments</strong> mentioning each type, not total word occurrences.
+      </div>
+      <div class="validate-box" id="v-mentions"></div>
       <div id="barChart"></div>
     </div>
     <div class="card">
-      <h2>Sentiment by Type</h2>
+      <div class="card-header"><h2>Sentiment by Type</h2><div><button class="methods-btn" onclick="toggleMethods('m-sentiment')">Methods</button><button class="validate-btn" onclick="toggleValidate('v-sentiment','sentiment')">Validate</button></div></div>
+      <div class="methods-box" id="m-sentiment">
+        <strong>Keyword-based sentiment scoring:</strong> Each post/comment (across all 8 subreddits) is scored from <strong>-1.0</strong> (very negative) to <strong>+1.0</strong> (very positive) using curated word lists:
+        <ul>
+          <li><strong>~40 positive words</strong> (love, recommend, effective, relief, helped, works, etc.)</li>
+          <li><strong>~50 negative words</strong> (hate, pain, nightmare, frustrated, scared, bleeding, etc.)</li>
+          <li><strong>Negators</strong> (not, never, don't, etc.) flip the next word's polarity &mdash; "not painful" counts as positive</li>
+          <li><strong>Intensifiers</strong> (very, extremely, so) multiply the next word's weight by 1.5x</li>
+        </ul>
+        <strong>Score formula:</strong> <code>(positive - negative) / total_sentiment_words</code>, clamped to [-1, 1]. The chart shows the <strong>average score</strong> across all posts mentioning each type. This is best for <strong>comparing trends between types</strong>, not interpreting individual posts &mdash; it cannot detect sarcasm, context, or complex phrasing.
+      </div>
+      <div class="validate-box" id="v-sentiment"></div>
       <div id="sentChart"></div>
     </div>
     <div class="card full">
-      <h2>Daily Trend</h2>
+      <div class="card-header"><h2>Daily Trend</h2><div><button class="methods-btn" onclick="toggleMethods('m-trend')">Methods</button></div></div>
+      <div class="methods-box" id="m-trend">
+        <strong>Daily mention counts:</strong> Shows the top 5 most-mentioned contraceptive types over time, aggregated across all 8 subreddits (or filtered by one). Each data point is the number of unique posts from that day containing a regex match for that type. Days with zero posts are not shown. The time and subreddit filters control the data displayed.
+      </div>
       <div class="chart-container"><canvas id="trendChart"></canvas></div>
     </div>
     <div class="card full">
-      <h2>Side Effect Heatmap</h2>
+      <div class="card-header"><h2>Side Effect Heatmap</h2><div><button class="methods-btn" onclick="toggleMethods('m-heatmap')">Methods</button><button class="validate-btn" onclick="toggleValidate('v-heatmap','effects')">Validate</button></div></div>
+      <div class="methods-box" id="m-heatmap">
+        <strong>Contraceptive &times; side-effect matrix:</strong> Data is sourced from <strong>8 subreddits</strong>. Each cell shows the number of posts and comments that mention <strong>both</strong> a contraceptive type and a side effect. Side effects are detected using 24 regex patterns matching symptoms like "bleeding," "cramping," "weight gain," "anxiety," etc. Color intensity scales linearly from transparent (0) to red (max value in the table). <strong>Limitation:</strong> A post saying "I'm worried about weight gain" and one saying "I had no weight gain" both count &mdash; the regex detects the mention, not the context. Top 12 contraceptives and top 15 side effects are shown.
+      </div>
+      <div class="validate-box" id="v-heatmap"></div>
       <div class="heatmap" id="heatmap"></div>
     </div>
     <div class="card">
-      <h2>Top Side Effects / Worries</h2>
+      <div class="card-header"><h2>Top Side Effects / Worries</h2><div><button class="methods-btn" onclick="toggleMethods('m-effects')">Methods</button><button class="validate-btn" onclick="toggleValidate('v-effects','effects')">Validate</button></div></div>
+      <div class="methods-box" id="m-effects">
+        <strong>Ranked side-effect mentions:</strong> Counts the number of unique posts and comments (across all 8 subreddits) that match each of the 24 side-effect regex patterns. A single post mentioning "cramps" and "bleeding" counts once for each category. Patterns include variations (e.g., "headache" and "migraine" both map to "Headaches"). This tracks what <strong>people are talking about</strong>, not necessarily what they experienced &mdash; questions, fears, and reports all count equally.
+      </div>
+      <div class="validate-box" id="v-effects"></div>
       <div id="effectsList"></div>
     </div>
     <div class="card">
-      <h2>Category Breakdown</h2>
+      <div class="card-header"><h2>Category Breakdown</h2><div><button class="methods-btn" onclick="toggleMethods('m-category')">Methods</button></div></div>
+      <div class="methods-box" id="m-category">
+        <strong>Grouped contraceptive categories:</strong> The 26 individual types are grouped into 6 categories: <strong>IUDs</strong> (Mirena, Kyleena, Liletta, Skyla, Paragard, IUD general), <strong>Pills</strong> (Combined, Mini, general, Slynd, Yaz, Lo Loestrin, Ortho Tri-Cyclen, Junel, Seasonique, Sprintec), <strong>Long-acting</strong> (Nexplanon, Depo-Provera), <strong>Barrier/Other</strong> (Condoms, NuvaRing, patch, spermicide, diaphragm, Phexxi), <strong>Emergency</strong> (Plan B), <strong>Behavioral</strong> (FAM/NFP, withdrawal). The chart sums mention counts within each group.
+      </div>
       <div class="chart-container"><canvas id="doughnutChart"></canvas></div>
     </div>
     <div class="card full" id="explorerCard">
-      <h2>Post Explorer</h2>
+      <div class="card-header"><h2>Post Explorer</h2><div><button class="methods-btn" onclick="toggleMethods('m-explorer')">Methods</button></div></div>
+      <div class="methods-box" id="m-explorer">
+        <strong>Browse raw posts and comments:</strong> Select a contraceptive type to see the top posts (sorted by <strong>engagement score</strong>) that mention it. Posts are sourced from all 8 subreddits. Each post shows:
+        <ul>
+          <li><strong>Subreddit badge</strong> &mdash; cyan pill showing which subreddit the post came from</li>
+          <li><strong>Sentiment badge</strong> &mdash; green (+), red (-), or gray (neutral/none), based on the keyword scorer</li>
+          <li><strong>Engagement score</strong> &mdash; composite metric: <code>log2(upvotes) + log2(comments) &times; 1.5</code>, weighting discussion higher than votes</li>
+          <li><strong>Side-effect pills</strong> &mdash; yellow tags for each side effect detected in that post's text</li>
+          <li><strong>View comments</strong> &mdash; expands to show scraped Reddit comments with their own sentiment scores</li>
+        </ul>
+      </div>
       <div class="explorer-controls">
         <select id="explorerType"></select>
         <button onclick="loadPosts()">Load Posts</button>
@@ -212,6 +294,7 @@ const RAW_MENTIONS = {mentions_json};
 const RAW_EFFECTS = {effects_json};
 const RAW_COMMENTS = {comments_json};
 const DB_STATS = {stats_json};
+const VALIDATION = {validation_json};
 
 const C = ['#7c6ef0','#e06090','#4ade80','#f0a040','#40b0f0','#f06060','#a070e0','#e0c040',
   '#50d0b0','#f080c0','#70a0f0','#c0e050','#f07050','#60d0e0','#d080f0','#a0d060','#e09070',
@@ -612,6 +695,97 @@ function toggleComments(postId) {{
   if (cmts.length > 20) h += `<div class="comment-meta" style="padding:.5rem 0">...and ${{cmts.length - 20}} more</div>`;
   h += '</div>';
   el.innerHTML = h;
+}}
+
+// --- Methods & Validate toggles ---
+function toggleMethods(id) {{
+  const box = document.getElementById(id);
+  box.classList.toggle('visible');
+  const header = box.closest('.card').querySelector('.methods-btn');
+  if (header) header.classList.toggle('active');
+}}
+
+function toggleValidate(id, section) {{
+  const box = document.getElementById(id);
+  const card = box.closest('.card');
+  const btn = card.querySelector('.validate-btn');
+
+  if (box.classList.contains('visible')) {{
+    box.classList.remove('visible');
+    if (btn) btn.classList.remove('active');
+    return;
+  }}
+
+  box.classList.add('visible');
+  if (btn) btn.classList.add('active');
+
+  const examples = VALIDATION[section] || [];
+  if (!examples.length) {{ box.innerHTML = '<div class="empty" style="padding:.5rem">No examples available yet. Run a scrape first.</div>'; return; }}
+
+  if (section === 'sentiment') box.innerHTML = renderSentimentValidation(examples);
+  else if (section === 'mentions') box.innerHTML = renderMentionValidation(examples);
+  else box.innerHTML = renderEffectsValidation(examples);
+}}
+
+function renderSentimentValidation(examples) {{
+  let h = '<div style="margin-bottom:.5rem;font-size:.75rem;color:var(--muted)"><strong style="color:var(--text)">Validation:</strong> Real posts analyzed step-by-step. Words are highlighted: <span class="hl-pos">positive</span> <span class="hl-neg">negative</span> <span class="hl-negator">negator</span> <span class="hl-intensifier">intensifier</span></div>';
+  for (const ex of examples) {{
+    h += '<div class="val-example">';
+    h += `<div class="val-title">${{esc(ex.title)}}</div>`;
+    const bd = ex.breakdown;
+    if (bd && bd.steps && bd.steps.length) {{
+      h += '<div class="val-steps"><table>';
+      h += '<tr><th>Word</th><th>Role</th><th>Effect</th><th>Running +/-</th></tr>';
+      for (const s of bd.steps) {{
+        const cls = s.role.includes('positive') ? 'hl-pos' : s.role.includes('negative') ? 'hl-neg' : s.role === 'negator' ? 'hl-negator' : s.role === 'intensifier' ? 'hl-intensifier' : '';
+        const running = (s.running_pos != null) ? `+${{s.running_pos}} / -${{s.running_neg}}` : '';
+        h += `<tr><td><span class="${{cls}}">${{s.word}}</span></td><td>${{s.role}}</td><td>${{s.effect}}</td><td>${{running}}</td></tr>`;
+      }}
+      h += '</table></div>';
+    }}
+    if (bd) h += `<div class="val-summary" style="color:${{sentColor(bd.score || 0)}}">${{bd.summary}}</div>`;
+    h += '</div>';
+  }}
+  return h;
+}}
+
+function renderMentionValidation(examples) {{
+  let h = '<div style="margin-bottom:.5rem;font-size:.75rem;color:var(--muted)"><strong style="color:var(--text)">Validation:</strong> Real posts showing exact regex matches. <span class="hl-mention">Matched text</span> is highlighted with the detected type.</div>';
+  for (const ex of examples) {{
+    h += '<div class="val-example">';
+    h += `<div class="val-title">${{esc(ex.title)}}</div>`;
+    if (ex.matches && ex.matches.length) {{
+      h += '<div style="margin:.3rem 0">';
+      for (const m of ex.matches) {{
+        h += `<span class="pill" style="border-color:var(--accent);color:var(--accent)">${{m.name}}: "${{esc(m.matched)}}"</span> `;
+      }}
+      h += '</div>';
+      h += `<div class="val-text">${{esc((ex.text_preview || '').slice(0, 250))}}</div>`;
+    }}
+    h += '</div>';
+  }}
+  return h;
+}}
+
+function renderEffectsValidation(examples) {{
+  let h = '<div style="margin-bottom:.5rem;font-size:.75rem;color:var(--muted)"><strong style="color:var(--text)">Validation:</strong> Real posts showing detected side effects and contraceptive matches.</div>';
+  for (const ex of examples) {{
+    h += '<div class="val-example">';
+    h += `<div class="val-title">${{esc(ex.title)}}</div>`;
+    if (ex.mention_matches && ex.mention_matches.length) {{
+      h += '<div style="margin:.2rem 0"><strong style="font-size:.7rem;color:var(--muted)">Contraceptives:</strong> ';
+      for (const m of ex.mention_matches) h += `<span class="pill" style="border-color:var(--accent);color:var(--accent)">${{m.name}}: "${{esc(m.matched)}}"</span> `;
+      h += '</div>';
+    }}
+    if (ex.side_effect_matches && ex.side_effect_matches.length) {{
+      h += '<div style="margin:.2rem 0"><strong style="font-size:.7rem;color:var(--muted)">Side effects:</strong> ';
+      for (const m of ex.side_effect_matches) h += `<span class="pill effect">${{m.name}}: "${{esc(m.matched)}}"</span> `;
+      h += '</div>';
+    }}
+    h += `<div class="val-text">${{esc((ex.text_preview || '').slice(0, 250))}}</div>`;
+    h += '</div>';
+  }}
+  return h;
 }}
 
 // --- Event listeners ---
